@@ -1,89 +1,127 @@
 import streamlit as st
+import pytesseract
+from PIL import Image
+import sympy as sp
 import requests
 from bs4 import BeautifulSoup
-import sympy as sp
-import re
+import math
 
-# पेज कॉन्फिगरेशन
-st.set_page_config(page_title="Custom URL Math Automation", layout="wide")
-st.title("🌐 कस्टम लिंक डेटा आणि ऑटोमेशन कॅल्क्युलेटर")
-st.write("तू टाकलेल्या कोणत्याही लिंकवरील डेटा आणि गणिताची सूत्रे एकत्र करून उत्तर काढणारे इंजिन.")
+st.set_page_config(page_title="Pro Logic & Grid Solver", layout="wide")
+st.title("🧠 प्रो लॉजिक, सुडोकू आणि ऑटोमेशन टूल")
+st.write("कोणत्याही साईझचे टेबल लॉजिक, वेब डेटा आणि ॲडव्हान्स गणित सोडवणारे स्मार्ट इंजिन.")
 
-# टॅब्स
-tab1, tab2 = st.tabs(["🔗 लिंक + गणित ऑटोमेशन (URL Math)", "🧮 डायरेक्ट कॅल्क्युलेटर"])
+tab1, tab2, tab3, tab4 = st.tabs(["🧩 डायनॅमिक सुडोकू/टेबल", "🖼️ फोटो स्कॅनर", "🌐 वेब डेटा", "🧮 ॲडव्हान्स गणित"])
 
 # ---------------------------------------------------------
-# १. लिंक डेटा आणि गणित ऑटोमेशन इंजिन
+# १. डायनॅमिक सुडोकू आणि टेबल लॉजिक इंजिन (कोणत्याही साईझसाठी)
 # ---------------------------------------------------------
+def is_valid(board, row, col, num, N, sub_size):
+    # ओळ आणि स्तंभ चेक करणे
+    for i in range(N):
+        if board[row][i] == num or board[i][col] == num:
+            return False
+            
+    # आतला छोटा बॉक्स (Subgrid) चेक करणे
+    start_row, start_col = sub_size * (row // sub_size), sub_size * (col // sub_size)
+    for i in range(sub_size):
+        for j in range(sub_size):
+            if board[start_row + i][start_col + j] == num:
+                return False
+    return True
+
+def solve_sudoku(board):
+    N = len(board)
+    sub_size = int(math.isqrt(N)) # आपोआप साईझ ओळखणे (उदा. 9x9 साठी 3, 16x16 साठी 4)
+    
+    for row in range(N):
+        for col in range(N):
+            if board[row][col] == 0:
+                for num in range(1, N + 1):
+                    if is_valid(board, row, col, num, N, sub_size):
+                        board[row][col] = num
+                        if solve_sudoku(board):
+                            return True
+                        board[row][col] = 0
+                return False
+    return True
+
 with tab1:
-    st.subheader("कोणतीही लिंक टाका आणि त्यावरील डेटावर गणित चालवा")
+    st.subheader("कोणत्याही साईझचा सुडोकू किंवा नंबर टेबल सोडवा")
+    st.write("उदा. 4x4, 9x9 किंवा 16x16. रिकाम्या बॉक्ससाठी **0** वापरा आणि आकडे स्वल्पविरामाने वेगळे करा.")
     
-    # यूझर इनपुट - लिंक आणि सूत्र
-    target_url = st.text_input("ज्या साईटवरून डेटा हवा आहे, ती लिंक (URL) येथे टाका:")
-    user_formula = st.text_input("या डेटावर कोणते गणित किंवा सूत्र वापरायचे आहे? (उदा. Total * 2, किंवा थेट समीकरण):")
+    grid_input = st.text_area(
+        "येथे टेबलचे आकडे टाका:", 
+        "5,3,0,0,7,0,0,0,0\n6,0,0,1,9,5,0,0,0\n0,9,8,0,0,0,0,6,0\n8,0,0,0,6,0,0,0,3\n4,0,0,8,0,3,0,0,1\n7,0,0,0,2,0,0,0,6\n0,6,0,0,0,0,2,8,0\n0,0,0,4,1,9,0,0,5\n0,0,0,0,8,0,0,7,9",
+        height=250
+    )
     
-    if st.button("डेटा गोळा करून गणित सोडवा"):
-        if target_url:
-            with st.spinner("दिलेल्या लिंकवरून डेटा आणि आकडे गोळा करत आहे..."):
-                try:
-                    # १. वेब ऑटोमेशन - साईटवरून डेटा काढणे
-                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-                    response = requests.get(target_url, headers=headers, timeout=10)
-                    
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        page_text = soup.get_text(separator=' ', strip=True)
-                        
-                        # २. डेटा मधून सर्व आकडे (Numbers) शोधून काढणे
-                        found_numbers = [float(n) for n in re.findall(r'[-+]?\d*\.\d+|\d+', page_text)]
-                        
-                        if found_numbers:
-                            st.success("✅ साईटवरून डेटा यशस्वीपणे गोळा केला!")
-                            
-                            # स्क्रीनवर सापडलेले आकडे दाखवणे
-                            st.write(f"📊 **साईटवर सापडलेले एकूण आकडे:** {found_numbers[:10]}... (पहिले काही आकडे)")
-                            total_sum = sum(found_numbers)
-                            max_val = max(found_numbers)
-                            min_val = min(found_numbers)
-                            count_val = len(found_numbers)
-                            
-                            st.info(f"📈 **डेटा विश्लेषण:** एकूण आकडे: {count_val} | बेरीज: {total_sum} | सर्वात मोठा अंक: {max_val}")
-                            
-                            # ३. गणिताचे सूत्र वापरून उत्तर काढणे
-                            try:
-                                # जर यूझरने स्वतःचे सूत्र दिले असेल (उदा. Total * 2)
-                                if user_formula:
-                                    # सूत्रातील 'Total' किंवा 'total' शब्दाला एकूण बेरजेने बदलणे
-                                    parsed_formula = user_formula.lower().replace('total', str(total_sum))
-                                    expr = sp.sympify(parsed_formula)
-                                    final_ans = expr.evalf()
-                                    st.success(f"🎯 **तुमच्या सूत्रानुसार फायनल उत्तर:** {final_ans}")
-                                else:
-                                    # जर सूत्र दिले नसेल तर साईटवरील डेटा मधील सर्व गणिते (उदा. 25+50) ऑटो-सर्च करून सोडवणे
-                                    st.warning("तुम्ही कोणतेही सूत्र दिले नाही, म्हणून साईटवरील आकड्यांची एकूण बेरीज केली आहे.")
-                                    st.success(f"🎯 **एकूण बेरीज उत्तर (Total Sum):** {total_sum}")
-                                    
-                            except Exception:
-                                st.error("त्रुटी: तुम्ही दिलेले गणिताचे सूत्र योग्य नाही. कृपया साधे सूत्र द्या (उदा. Total * 5).")
-                        else:
-                            st.warning("या साईटवर कोडिंगला वापरण्यासारखे कोणतेही आकडे किंवा संख्या सापडल्या नाहीत.")
+    if st.button("टेबल सोडवा (Solve)"):
+        try:
+            rows = grid_input.strip().split('\n')
+            board = [[int(num.strip()) for num in row.split(',')] for row in rows]
+            
+            # टेबल चौकोनी (Square) आहे का ते चेक करणे
+            N = len(board)
+            if all(len(r) == N for r in board) and N > 0:
+                with st.spinner(f"{N}x{N} चे टेबल सोडवत आहे..."):
+                    if solve_sudoku(board):
+                        st.success(f"✅ {N}x{N} टेबल यशस्वीपणे सोडवले!")
+                        for r in board:
+                            st.code(" | ".join(str(x).rjust(2, ' ') for x in r))
                     else:
-                        st.error(f"साईटकडून डेटा मिळाला नाही. एरर कोड: {response.status_code}")
-                except Exception as e:
-                    st.error("वेब ऑटोमेशन फेल झाले! लिंक योग्य असल्याची आणि इंटरनेट चालू असल्याची खात्री करा.")
-        else:
-            st.warning("कृपया आधी साईटची लिंक (URL) टाका.")
+                        st.error("❌ हे टेबल सोडवणे शक्य नाही. दिलेले आकडे चुकीचे असू शकतात.")
+            else:
+                st.warning(f"टेबलची साईझ चुकीची आहे. तुम्ही {N} ओळी दिल्या आहेत, त्यामुळे प्रत्येक ओळीत {N} च आकडे असले पाहिजेत.")
+        except Exception:
+            st.error("त्रुटी: कृपया फॉरमॅट तपासा. फक्त आकडे आणि स्वल्पविराम वापरा.")
 
 # ---------------------------------------------------------
-# २. डायरेक्ट कॅल्क्युलेटर टॅब
+# २. फोटो स्कॅनर (OCR)
 # ---------------------------------------------------------
 with tab2:
-    st.subheader("थेट गणिते आणि समीकरणे सोडवा")
-    direct_math = st.text_input("गणित टाईप करा (उदा. (50+25)/5 * 10):")
-    if st.button("थेट उत्तर काढा"):
-        if direct_math:
+    st.subheader("फोटोमधील मजकूर आणि आकडे वाचा")
+    img_file = st.file_uploader("फोटो निवडा:", type=['png', 'jpg', 'jpeg'])
+    if img_file is not None:
+        image = Image.open(img_file)
+        st.image(image, width=300)
+        if st.button("स्कॅन करा"):
+            with st.spinner("स्कॅन करत आहे..."):
+                text = pytesseract.image_to_string(image)
+                if text.strip():
+                    st.success("✅ स्कॅन यशस्वी!")
+                    st.code(text)
+                else:
+                    st.warning("स्पष्ट मजकूर सापडला नाही.")
+
+# ---------------------------------------------------------
+# ३. वेब ऑटोमेशन (Web Scraper)
+# ---------------------------------------------------------
+with tab3:
+    st.subheader("वेबसाईटवरील डेटा काढा")
+    url_input = st.text_input("लिंक (URL) टाका:")
+    if st.button("डेटा आणा"):
+        if url_input:
             try:
-                expr = sp.sympify(direct_math)
-                st.success(f"🎯 **उत्तर:** {expr.evalf()}")
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                res = requests.get(url_input, headers=headers, timeout=10)
+                if res.status_code == 200:
+                    soup = BeautifulSoup(res.text, 'html.parser')
+                    st.success("✅ डेटा मिळाला!")
+                    st.text_area("मजकूर:", soup.get_text(separator=' ', strip=True)[:1000] + "...", height=200)
+                else:
+                    st.error("लिंक उघडता आली नाही.")
             except Exception:
-                st.error("कृपया योग्य गणिती सूत्र टाका.")
+                st.error("लिंक किंवा इंटरनेट तपासा.")
+
+# ---------------------------------------------------------
+# ४. ॲडव्हान्स गणित इंजिन
+# ---------------------------------------------------------
+with tab4:
+    st.subheader("गुंतागुंतीचे गणित सोडवा")
+    math_expr = st.text_input("गणित टाका (उदा. x**2 - 5*x + 6):")
+    if st.button("उत्तर काढा"):
+        try:
+            expr = sp.sympify(math_expr)
+            st.success(f"उत्तर: {expr.evalf()}")
+        except Exception:
+            st.error("योग्य सूत्र द्या.")
