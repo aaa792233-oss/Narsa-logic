@@ -1,0 +1,6 @@
+streamlit
+sympy
+requests
+beautifulsoup4
+pytesseract
+Pillow
