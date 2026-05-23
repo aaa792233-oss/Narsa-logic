@@ -1,27 +1,24 @@
 import streamlit as st
 import pytesseract
-from PIL import Image
-import sympy as sp
-import requests
-from bs4 import BeautifulSoup
+from PIL import Image, ImageOps
+import numpy as np
+import re
 import math
 
-st.set_page_config(page_title="Pro Logic & Grid Solver", layout="wide")
-st.title("🧠 प्रो लॉजिक, सुडोकू आणि ऑटोमेशन टूल")
-st.write("कोणत्याही साईझचे टेबल लॉजिक, वेब डेटा आणि ॲडव्हान्स गणित सोडवणारे स्मार्ट इंजिन.")
+# पेज कॉन्फिगरेशन
+st.set_page_config(page_title="AI Smart Grid Solver", layout="wide")
+st.title("🤖 AI स्मार्ट ग्रिड आणि ऑटोमेशन सॉल्वर")
+st.write("अॅक्टिव्ह रिकॉल: फोटो अपलोड करा, रिकाम्या जागा आपोआप ओळखून टेबल सोडवले जाईल.")
 
-tab1, tab2, tab3, tab4 = st.tabs(["🧩 डायनॅमिक सुडोकू/टेबल", "🖼️ फोटो स्कॅनर", "🌐 वेब डेटा", "🧮 ॲडव्हान्स गणित"])
+tab1, tab2 = st.tabs(["🖼️ ऑटोमॅटिक फोटो सॉल्वर", "🧮 ॲडव्हान्स गणित"])
 
 # ---------------------------------------------------------
-# १. डायनॅमिक सुडोकू आणि टेबल लॉजिक इंजिन (कोणत्याही साईझसाठी)
+# कोर लॉजिक - सुडोकू सॉल्वर (Dynamic N x N)
 # ---------------------------------------------------------
 def is_valid(board, row, col, num, N, sub_size):
-    # ओळ आणि स्तंभ चेक करणे
     for i in range(N):
         if board[row][i] == num or board[i][col] == num:
             return False
-            
-    # आतला छोटा बॉक्स (Subgrid) चेक करणे
     start_row, start_col = sub_size * (row // sub_size), sub_size * (col // sub_size)
     for i in range(sub_size):
         for j in range(sub_size):
@@ -31,7 +28,8 @@ def is_valid(board, row, col, num, N, sub_size):
 
 def solve_sudoku(board):
     N = len(board)
-    sub_size = int(math.isqrt(N)) # आपोआप साईझ ओळखणे (उदा. 9x9 साठी 3, 16x16 साठी 4)
+    if N == 0: return True 
+    sub_size = int(math.isqrt(N))
     
     for row in range(N):
         for col in range(N):
@@ -45,80 +43,119 @@ def solve_sudoku(board):
                 return False
     return True
 
-with tab1:
-    st.subheader("कोणत्याही साईझचा सुडोकू किंवा नंबर टेबल सोडवा")
-    st.write("उदा. 4x4, 9x9 किंवा 16x16. रिकाम्या बॉक्ससाठी **0** वापरा आणि आकडे स्वल्पविरामाने वेगळे करा.")
+# ---------------------------------------------------------
+# OCR आणि इंटेलिजेंट डेटा प्रोसेसिंग
+# ---------------------------------------------------------
+def process_image_and_solve(image):
+    gray_image = ImageOps.grayscale(image)
+    custom_config = r'--oem 3 --psm 6 outputbase digits'
+    extracted_text = pytesseract.image_to_string(gray_image, config=custom_config)
     
-    grid_input = st.text_area(
-        "येथे टेबलचे आकडे टाका:", 
-        "5,3,0,0,7,0,0,0,0\n6,0,0,1,9,5,0,0,0\n0,9,8,0,0,0,0,6,0\n8,0,0,0,6,0,0,0,3\n4,0,0,8,0,3,0,0,1\n7,0,0,0,2,0,0,0,6\n0,6,0,0,0,0,2,8,0\n0,0,0,4,1,9,0,0,5\n0,0,0,0,8,0,0,7,9",
-        height=250
-    )
+    cleaned_data = re.sub(r'[^0-9\s]', '', extracted_text)
+    raw_numbers = cleaned_data.split()
     
-    if st.button("टेबल सोडवा (Solve)"):
-        try:
-            rows = grid_input.strip().split('\n')
-            board = [[int(num.strip()) for num in row.split(',')] for row in rows]
+    digits = []
+    for item in raw_numbers:
+        for char in item:
+            digits.append(int(char))
             
-            # टेबल चौकोनी (Square) आहे का ते चेक करणे
-            N = len(board)
-            if all(len(r) == N for r in board) and N > 0:
-                with st.spinner(f"{N}x{N} चे टेबल सोडवत आहे..."):
-                    if solve_sudoku(board):
-                        st.success(f"✅ {N}x{N} टेबल यशस्वीपणे सोडवले!")
-                        for r in board:
-                            st.code(" | ".join(str(x).rjust(2, ' ') for x in r))
-                    else:
-                        st.error("❌ हे टेबल सोडवणे शक्य नाही. दिलेले आकडे चुकीचे असू शकतात.")
-            else:
-                st.warning(f"टेबलची साईझ चुकीची आहे. तुम्ही {N} ओळी दिल्या आहेत, त्यामुळे प्रत्येक ओळीत {N} च आकडे असले पाहिजेत.")
-        except Exception:
-            st.error("त्रुटी: कृपया फॉरमॅट तपासा. फक्त आकडे आणि स्वल्पविराम वापरा.")
+    total_digits = len(digits)
+    if total_digits == 0:
+        return None, "फोटोमध्ये कोणतेही आकडे सापडले नाहीत."
+        
+    N = int(math.sqrt(total_digits))
+    
+    if N * N != total_digits or N not in [4, 9, 16]:
+        if total_digits <= 16: N = 4
+        elif total_digits <= 81: N = 9
+        else: N = 16
+        
+        if len(digits) < N*N:
+            digits.extend([0] * (N*N - len(digits)))
+        else:
+            digits = digits[:N*N]
+            
+    board = np.array(digits).reshape(N, N).tolist()
+    return board, None
 
 # ---------------------------------------------------------
-# २. फोटो स्कॅनर (OCR)
+# व्हिज्युअल ग्रिड बनवणारे फंक्शन (HTML/CSS)
+# ---------------------------------------------------------
+def draw_grid(original_board, solved_board):
+    N = len(solved_board)
+    sub_size = int(math.isqrt(N))
+    
+    html = '<table style="border-collapse: collapse; margin: 20px auto; font-family: sans-serif;">'
+    for row in range(N):
+        html += '<tr>'
+        for col in range(N):
+            val = solved_board[row][col]
+            orig_val = original_board[row][col]
+            
+            # अॅक्टिव्ह रिकॉल: रिकाम्या (0) जागा शोधून तिथे वेगळा रंग देणे
+            if orig_val == 0:
+                text_color = "#007BFF" # AI ने शोधलेले उत्तर निळ्या रंगात
+                bg_color = "#E6F2FF"   # बॅकग्राऊंड हलका निळा
+                display_val = f"<b>{val}</b>"
+            else:
+                text_color = "#333333" # मूळ आकडे काळ्या रंगात
+                bg_color = "#FFFFFF"
+                display_val = str(val)
+                
+            # बॉर्डर जाड करणे (Subgrid नुसार)
+            border_top = "2px solid black" if row % sub_size == 0 else "1px solid #ccc"
+            border_left = "2px solid black" if col % sub_size == 0 else "1px solid #ccc"
+            border_bottom = "2px solid black" if row == N-1 else ""
+            border_right = "2px solid black" if col == N-1 else ""
+            
+            style = f"border-top: {border_top}; border-left: {border_left}; border-bottom: {border_bottom}; border-right: {border_right}; padding: 15px 20px; text-align: center; font-size: 22px; color: {text_color}; background-color: {bg_color}; width: 50px; height: 50px;"
+            
+            html += f'<td style="{style}">{display_val}</td>'
+        html += '</tr>'
+    html += '</table>'
+    return html
+
+# ---------------------------------------------------------
+# १. ऑटोमॅटिक फोटो सॉल्वर टॅब
+# ---------------------------------------------------------
+with tab1:
+    st.subheader("फोटो अपलोड करा आणि रिकाम्या जागा भरा")
+    
+    uploaded_file = st.file_uploader("फोटो निवडा...", type=['png', 'jpg', 'jpeg'])
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="अपलोड केलेला फोटो", width=300)
+        
+        if st.button("ऑटो-सॉल्व्ह आणि डिझाईन करा"):
+            with st.spinner("AI फोटोचे विश्लेषण करत आहे आणि रिकाम्या जागा शोधत आहे..."):
+                board, error = process_image_and_solve(image)
+                
+                if error:
+                    st.error(error)
+                else:
+                    N = len(board)
+                    original_board = [row[:] for row in board] # मूळ बोर्ड सेव्ह करणे (Active Recall साठी)
+                    
+                    st.write(f"🧩 **फोटोवरून ओळखलेले मूळ {N}x{N} टेबल (रिकाम्या जागा 0):**")
+                    st.markdown(draw_grid(original_board, original_board), unsafe_allow_html=True)
+                        
+                    solved_board = [row[:] for row in board]
+                    if solve_sudoku(solved_board):
+                        st.success("✅ AI ने रिकाम्या जागा यशस्वीपणे शोधल्या आहेत!")
+                        st.write("🏁 **फायनल उत्तर (निळ्या रंगात AI ने शोधलेले आकडे):**")
+                        # इथे मूळ बोर्ड आणि सोडवलेला बोर्ड पास करून रंग बदलले जातील
+                        st.markdown(draw_grid(original_board, solved_board), unsafe_allow_html=True)
+                    else:
+                        st.error("❌ या टेबलचे लॉजिकल उत्तर काढणे शक्य नाही. फोटो अस्पष्ट असू शकतो.")
+
+# ---------------------------------------------------------
+# २. डायरेक्ट गणित टॅब
 # ---------------------------------------------------------
 with tab2:
-    st.subheader("फोटोमधील मजकूर आणि आकडे वाचा")
-    img_file = st.file_uploader("फोटो निवडा:", type=['png', 'jpg', 'jpeg'])
-    if img_file is not None:
-        image = Image.open(img_file)
-        st.image(image, width=300)
-        if st.button("स्कॅन करा"):
-            with st.spinner("स्कॅन करत आहे..."):
-                text = pytesseract.image_to_string(image)
-                if text.strip():
-                    st.success("✅ स्कॅन यशस्वी!")
-                    st.code(text)
-                else:
-                    st.warning("स्पष्ट मजकूर सापडला नाही.")
-
-# ---------------------------------------------------------
-# ३. वेब ऑटोमेशन (Web Scraper)
-# ---------------------------------------------------------
-with tab3:
-    st.subheader("वेबसाईटवरील डेटा काढा")
-    url_input = st.text_input("लिंक (URL) टाका:")
-    if st.button("डेटा आणा"):
-        if url_input:
-            try:
-                headers = {'User-Agent': 'Mozilla/5.0'}
-                res = requests.get(url_input, headers=headers, timeout=10)
-                if res.status_code == 200:
-                    soup = BeautifulSoup(res.text, 'html.parser')
-                    st.success("✅ डेटा मिळाला!")
-                    st.text_area("मजकूर:", soup.get_text(separator=' ', strip=True)[:1000] + "...", height=200)
-                else:
-                    st.error("लिंक उघडता आली नाही.")
-            except Exception:
-                st.error("लिंक किंवा इंटरनेट तपासा.")
-
-# ---------------------------------------------------------
-# ४. ॲडव्हान्स गणित इंजिन
-# ---------------------------------------------------------
-with tab4:
-    st.subheader("गुंतागुंतीचे गणित सोडवा")
-    math_expr = st.text_input("गणित टाका (उदा. x**2 - 5*x + 6):")
+    st.subheader("थेट गणित सोडवा")
+    import sympy as sp
+    math_expr = st.text_input("गणित टाका (उदा. sin(45) * 100):")
     if st.button("उत्तर काढा"):
         try:
             expr = sp.sympify(math_expr)
