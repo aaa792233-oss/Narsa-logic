@@ -1,75 +1,54 @@
-import streamlit as st
-import pandas as pd
-from collections import Counter
-import re
+from datetime import datetime, timedelta
 
-# पेजची सेटिंग
-st.set_page_config(page_title="Smart Pattern Analyzer", layout="wide")
-st.title("📊 स्मार्ट चार्ट पॅटर्न आणि रेकॉर्ड ॲनालिझर")
-st.write("चार्टमधील जुन्या आकड्यांवरून 'हॉट आकडे' आणि 'लाईन' ओळखणारे टूल.")
+# जुना डेटा: तारीख, वार आणि आलेली जोडी
+historical_data = [
+    {"date": "2026-05-04", "day": "Monday", "jodi": "51"},
+    {"date": "2026-05-05", "day": "Tuesday", "jodi": "76"},
+    {"date": "2026-05-11", "day": "Monday", "jodi": "51"}, # ११ तारखेला पुन्हा ५१ आला
+    {"date": "2026-05-12", "day": "Tuesday", "jodi": "33"},
+    {"date": "2026-05-18", "day": "Monday", "jodi": "51"}, # १८ तारखेला पुन्हा ५१ आला
+    {"date": "2026-05-19", "day": "Tuesday", "jodi": "76"}, # ७६ पुन्हा आला
+]
 
-# ---------------------------------------------------------
-# १. डेटा इनपुट सेक्शन
-# ---------------------------------------------------------
-st.subheader("१. चार्टमधील आकडे टाका")
-st.write("चार्टमधले शेवटचे काही आकडे स्पेस किंवा स्वल्पविराम (Comma) देऊन बॉक्समध्ये टाका. (उदा. 53, 48, 04, 83)")
+def analyze_chart(target_jodi, data):
+    dates_found = []
+    days_found = []
+    
+    # दिलेल्या जोडीचा इतिहास तपासणे
+    for record in data:
+        if record["jodi"] == target_jodi:
+            dates_found.append(datetime.strptime(record["date"], "%Y-%m-%d"))
+            days_found.append(record["day"])
+            
+    if len(dates_found) < 2:
+        return "अंदाज लावण्यासाठी जुना डेटा कमी आहे."
 
-# युझरकडून आकडे घेण्यासाठी बॉक्स
-raw_data = st.text_area("येथे आकडे टाईप करा:", "53 48 04 83 79 14 36 98 75 37 97 68 95 13 95 51 34 18")
-
-# ---------------------------------------------------------
-# २. लॉजिक आणि ॲनालिसिस
-# ---------------------------------------------------------
-if st.button("पॅटर्न आणि अंदाज काढा"):
-    if raw_data:
-        # कचरा साफ करून फक्त आकडे काढणे
-        cleaned_data = re.sub(r'[^0-9\s,]', ' ', raw_data).replace(',', ' ')
-        numbers = [int(x) for x in cleaned_data.split() if x.isdigit()]
+    # १. कोणत्या वारी हा आकडा जास्त येतो ते शोधणे
+    most_common_day = max(set(days_found), key=days_found.count)
+    
+    # २. दोन निकालांमधील सरासरी दिवसांचा गॅप (कालावधी) काढणे
+    gaps = []
+    for i in range(len(dates_found) - 1):
+        gap = (dates_found[i+1] - dates_found[i]).days
+        gaps.append(gap)
         
-        if len(numbers) > 0:
-            st.success(f"✅ सिस्टीमने एकूण {len(numbers)} आकडे विश्लेषणासाठी (Analysis) घेतले आहेत.")
-            
-            # --- पॅटर्न १: सर्वात जास्त आलेले आकडे ---
-            count = Counter(numbers)
-            most_common = count.most_common(5) # टॉप ५
-            least_common = count.most_common()[-5:] # सर्वात कमी
-            
-            # --- पॅटर्न २: सिंगल डिजिट (ओपन/क्लोज) ॲनालिसिस ---
-            single_digits = []
-            for n in numbers:
-                # दोन अंकी संख्येचे दोन भाग करणे (उदा. 53 -> 5 आणि 3)
-                single_digits.extend([int(d) for d in str(n)])
-            
-            digit_count = Counter(single_digits)
-            most_common_digits = digit_count.most_common(4)
-            
-            st.markdown("---")
-            st.subheader("📈 चार्टचे विश्लेषण (Chart Analysis)")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.info("🔥 हॉट आकडे (जे पुन्हा पुन्हा येत आहेत)")
-                for num, freq in most_common:
-                    st.write(f"जोडी **{num}** (आली: {freq} वेळा)")
-                    
-            with col2:
-                st.warning("❄️ कोल्ड आकडे (जे खूप कमी आले आहेत)")
-                for num, freq in least_common:
-                    st.write(f"जोडी **{num}** (आली: {freq} वेळा)")
+    average_gap = sum(gaps) / len(gaps) # सरासरी गॅप (दिवस)
+    
+    # ३. शेवटच्या तारखेवरून पुढील संभाव्य तारीख काढणे
+    last_date = dates_found[-1]
+    next_predicted_date = last_date + timedelta(days=int(average_gap))
+    
+    return {
+        "most_common_day": most_common_day,
+        "average_gap_days": int(average_gap),
+        "next_date_prediction": next_predicted_date.strftime("%Y-%m-%d")
+    }
 
-            # --- फायनल अंदाज (Prediction) ---
-            st.markdown("---")
-            st.subheader("🎯 पुढील आकड्याचा अंदाज (Probability Prediction)")
-            st.write("जुन्या पॅटर्ननुसार सर्वात स्ट्राँग 'सिंगल' आकडे (Open/Close साठी):")
-            
-            c1, c2, c3, c4 = st.columns(4)
-            if len(most_common_digits) >= 4:
-                c1.success(f"पहिला चान्स: **{most_common_digits[0][0]}**")
-                c2.success(f"दुसरा चान्स: **{most_common_digits[1][0]}**")
-                c3.success(f"तिसरा चान्स: **{most_common_digits[2][0]}**")
-                c4.success(f"चौथा चान्स: **{most_common_digits[3][0]}**")
-                
-            st.caption("टीप: हे ॲप जुन्या चार्टच्या गणितावर (Probability) आधारित सर्वात स्ट्राँग आकडे काढते. यामुळे अचूक अंदाज बांधायला मदत होईल.")
-        else:
-            st.error("कृपया बॉक्समध्ये योग्य आकडे टाका.")
+# समजा आपल्याला '51' या जोडीचा पॅटर्न पाहायचा आहे
+jodi_to_check = "51"
+result = analyze_chart(jodi_to_check, historical_data)
+
+print(f"--- 📊 {jodi_to_check} जोडीचे विश्लेषण ---")
+print(f"१. हा आकडा जास्त करून या वारी येतो: {result['most_common_day']}")
+print(f"२. हा आकडा पुन्हा येण्यासाठी सरासरी गॅप (दिवस): {result['average_gap_days']} दिवस")
+print(f"३. पुढील संभाव्य तारीख (अंदाजे): {result['next_date_prediction']}")
