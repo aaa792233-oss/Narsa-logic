@@ -1,54 +1,68 @@
-from datetime import datetime, timedelta
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chart Tracker</title>
+    <style>
+        body { font-family: Arial; background-color: #eef2f3; text-align: center; padding-top: 30px; }
+        .main-box { background: white; padding: 20px; width: 60%; margin: auto; box-shadow: 0px 4px 8px gray; border-radius: 10px; }
+        input { padding: 10px; margin: 5px; width: 90px; text-align: center; border: 1px solid #ccc; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 5px;}
+        table { margin: 20px auto; border-collapse: collapse; width: 100%; background: #ffdeb3; }
+        th, td { border: 2px solid #d49c5e; padding: 15px; }
+        .jodi { font-size: 30px; font-weight: bold; color: black; }
+        .panel { font-size: 16px; line-height: 1.5; }
+    </style>
+</head>
+<body>
 
-# जुना डेटा: तारीख, वार आणि आलेली जोडी
-historical_data = [
-    {"date": "2026-05-04", "day": "Monday", "jodi": "51"},
-    {"date": "2026-05-05", "day": "Tuesday", "jodi": "76"},
-    {"date": "2026-05-11", "day": "Monday", "jodi": "51"}, # ११ तारखेला पुन्हा ५१ आला
-    {"date": "2026-05-12", "day": "Tuesday", "jodi": "33"},
-    {"date": "2026-05-18", "day": "Monday", "jodi": "51"}, # १८ तारखेला पुन्हा ५१ आला
-    {"date": "2026-05-19", "day": "Tuesday", "jodi": "76"}, # ७६ पुन्हा आला
-]
+    <div class="main-box">
+        <h2>📊 डेटा ट्रॅकिंग सॉफ्टवेअर</h2>
+        <input type="text" id="openP" placeholder="ओपन पॅनेल">
+        <input type="number" id="jodiNum" placeholder="जोडी (Jodi)">
+        <input type="text" id="closeP" placeholder="क्लोज पॅनेल">
+        <button onclick="saveData()">सेव्ह करा</button>
 
-def analyze_chart(target_jodi, data):
-    dates_found = []
-    days_found = []
-    
-    # दिलेल्या जोडीचा इतिहास तपासणे
-    for record in data:
-        if record["jodi"] == target_jodi:
-            dates_found.append(datetime.strptime(record["date"], "%Y-%m-%d"))
-            days_found.append(record["day"])
-            
-    if len(dates_found) < 2:
-        return "अंदाज लावण्यासाठी जुना डेटा कमी आहे."
+        <table>
+            <thead>
+                <tr>
+                    <th>ओपन पॅनेल</th>
+                    <th>जोडी (Jodi)</th>
+                    <th>क्लोज पॅनेल</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+    </div>
 
-    # १. कोणत्या वारी हा आकडा जास्त येतो ते शोधणे
-    most_common_day = max(set(days_found), key=days_found.count)
-    
-    # २. दोन निकालांमधील सरासरी दिवसांचा गॅप (कालावधी) काढणे
-    gaps = []
-    for i in range(len(dates_found) - 1):
-        gap = (dates_found[i+1] - dates_found[i]).days
-        gaps.append(gap)
-        
-    average_gap = sum(gaps) / len(gaps) # सरासरी गॅप (दिवस)
-    
-    # ३. शेवटच्या तारखेवरून पुढील संभाव्य तारीख काढणे
-    last_date = dates_found[-1]
-    next_predicted_date = last_date + timedelta(days=int(average_gap))
-    
-    return {
-        "most_common_day": most_common_day,
-        "average_gap_days": int(average_gap),
-        "next_date_prediction": next_predicted_date.strftime("%Y-%m-%d")
-    }
+    <script>
+        function saveData() {
+            let op = document.getElementById("openP").value;
+            let jodi = document.getElementById("jodiNum").value;
+            let cp = document.getElementById("closeP").value;
 
-# समजा आपल्याला '51' या जोडीचा पॅटर्न पाहायचा आहे
-jodi_to_check = "51"
-result = analyze_chart(jodi_to_check, historical_data)
+            if(op === "" || jodi === "" || cp === "") {
+                alert("कृपया सर्व रकाने भरा!");
+                return;
+            }
 
-print(f"--- 📊 {jodi_to_check} जोडीचे विश्लेषण ---")
-print(f"१. हा आकडा जास्त करून या वारी येतो: {result['most_common_day']}")
-print(f"२. हा आकडा पुन्हा येण्यासाठी सरासरी गॅप (दिवस): {result['average_gap_days']} दिवस")
-print(f"३. पुढील संभाव्य तारीख (अंदाजे): {result['next_date_prediction']}")
+            let opFormat = op.split('').join('<br>');
+            let cpFormat = cp.split('').join('<br>');
+
+            let row = `<tr>
+                <td class="panel">${opFormat}</td>
+                <td class="jodi">${jodi}</td>
+                <td class="panel">${cpFormat}</td>
+            </tr>`;
+
+            document.getElementById("tableBody").innerHTML += row;
+
+            document.getElementById("openP").value = "";
+            document.getElementById("jodiNum").value = "";
+            document.getElementById("closeP").value = "";
+        }
+    </script>
+
+</body>
+</html>
