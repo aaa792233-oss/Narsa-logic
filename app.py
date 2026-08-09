@@ -15,20 +15,15 @@ app.add_middleware(
 
 os.environ["REPLICATE_API_TOKEN"] = "तुमची_REPLICATE_API_KEY_येथे_टाका"
 
-class ProcessRequest(BaseModel):
+class VideoRequest(BaseModel):
     prompt: str
-    video_data: str = None
-    image_data: str = None
 
 @app.post("/api/generate-video")
-async def generate_video(request: ProcessRequest):
+async def generate_video(request: VideoRequest):
     try:
-        # Replicate फेस स्वॅप / व्हिडिओ मॉडेल
         output = replicate.run(
-            "fofr/face-swap:43eaebfaef93e3d36d4d673199d63897d21b3697e18987b22f6797175782782e",
-            input={
-                "prompt": request.prompt if request.prompt else "face swap"
-            }
+            "lucataco/hotshot-xl:78b3a6257e16e4b241245d65c8b2b81ea2e1ff7ed4c55238b91dc3fa2baaf100",
+            input={"prompt": request.prompt if request.prompt else "cinematic video"}
         )
         return {"status": "success", "video_url": output}
     except Exception as e:
