@@ -1,5 +1,4 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
 import replicate
 import os
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,15 +14,15 @@ app.add_middleware(
 
 os.environ["REPLICATE_API_TOKEN"] = "तुमची_REPLICATE_API_KEY_येथे_टाका"
 
-class VideoRequest(BaseModel):
-    prompt: str
-
 @app.post("/api/generate-video")
-async def generate_video(request: VideoRequest):
+async def generate_video(request: Request):
     try:
+        body = await request.json()
+        prompt_text = body.get("prompt", "cinematic video")
+        
         output = replicate.run(
             "lucataco/hotshot-xl:78b3a6257e16e4b241245d65c8b2b81ea2e1ff7ed4c55238b91dc3fa2baaf100",
-            input={"prompt": request.prompt if request.prompt else "cinematic video"}
+            input={"prompt": prompt_text}
         )
         return {"status": "success", "video_url": output}
     except Exception as e:
