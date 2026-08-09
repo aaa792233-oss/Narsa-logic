@@ -2,4 +2,4 @@ fastapi
 uvicorn
 replicate
 pydantic
-
+python-multipart
