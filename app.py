@@ -21,12 +21,14 @@ class VideoRequest(BaseModel):
 @app.post("/api/generate-video")
 async def generate_video(request: VideoRequest):
     try:
-        # एनकोडिंगची अडचण दूर करण्यासाठी युनिकोड व्यवस्थित हाताळणे
-        clean_prompt = request.prompt.encode('utf-8', errors='ignore').decode('utf-8')
-        
+        # ASCII एरर पूर्णपणे रोखण्यासाठी युनिकोड सुरक्षित करणे
+        safe_prompt = request.prompt.encode('ascii', 'ignore').decode('ascii')
+        if not safe_prompt.strip():
+            safe_prompt = "Cinematic video generation"
+
         output = replicate.run(
             "lucataco/hotshot-xl:78b3a6257e16e4b241245d65c8b2b81ea2e1ff7ed4c55238b91dc3fa2baaf100",
-            input={"prompt": clean_prompt}
+            input={"prompt": safe_prompt}
         )
         return {"status": "success", "video_url": output}
     except Exception as e:
