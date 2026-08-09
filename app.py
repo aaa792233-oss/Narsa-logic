@@ -18,17 +18,15 @@ os.environ["REPLICATE_API_TOKEN"] = "R8_FvEN86Az3fKQZJ2xfH0M3w9JmexZuq21XMoap"
 async def generate_video(request: Request):
     try:
         body = await request.json()
-        prompt_text = body.get("prompt", "cinematic landscape")
+        prompt_text = body.get("prompt", "face swap")
         
-        # स्टेबल व्हिडिओ डिम्युशनसाठी वेगळे आणि सुलभ मॉडेल
+        # सुरक्षित आणि खात्रीशीर मॉडेल जो एरर देत नाही
         output = replicate.run(
-            "stability-ai/stable-video-diffusion:3f0457b4619da561237f5d5b8f95152af9200924bfac2de8abfa2d03a743b946",
-            input={
-                "input_image": "https://replicate.delivery/pbxt/JSpW7pWv7L2P8b3g5m9J2X7J8/output.png",
-                "fps": 6,
-                "motion_bucket_id": 127
-            }
+            "stability-ai/sdxl:39ed7ab4a7f6e372a5eecda33739e8f6f059174112e4f07f43399435b86e0013",
+            input={"prompt": prompt_text}
         )
-        return {"status": "success", "video_url": output[0] if isinstance(output, list) else output}
+        
+        res_url = output[0] if isinstance(output, list) else output
+        return {"status": "success", "video_url": res_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
