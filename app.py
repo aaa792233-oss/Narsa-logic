@@ -20,10 +20,14 @@ async def generate_video(request: Request):
         body = await request.json()
         prompt_text = body.get("prompt", "face swap")
         
-        # सुरक्षित आणि खात्रीशीर मॉडेल जो एरर देत नाही
+        # व्हिडिओ आणि इमेज फेस स्वॅपसाठी अधिकृत मॉडेल
         output = replicate.run(
-            "stability-ai/sdxl:39ed7ab4a7f6e372a5eecda33739e8f6f059174112e4f07f43399435b86e0013",
-            input={"prompt": prompt_text}
+            "fofr/face-swap:43eaebfaef93e3d36d4d673199d63897d21b3697e18987b22f6797175782782e",
+            input={
+                "target_image": "https://replicate.delivery/pbxt/JSpW7pWv7L2P8b3g5m9J2X7J8/output.png",
+                "swap_image": "https://replicate.delivery/pbxt/JSpW7pWv7L2P8b3g5m9J2X7J8/output.png",
+                "prompt": prompt_text
+            }
         )
         
         res_url = output[0] if isinstance(output, list) else output
