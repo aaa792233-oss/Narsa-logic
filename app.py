@@ -22,13 +22,9 @@ async def generate_video(
     image: UploadFile = File(default=None)
 ):
     try:
-        # जर फाईल्स आल्या असतील तर फेस स्वॅप मॉडेल रन करणे
-        # (सध्या Replicate साठी URL लागतात, त्यामुळे फाईल्स अपलोडची सुविधा जोडली आहे)
         output = replicate.run(
-            "fofr/face-swap:43eaebfaef93e3d36d4d673199d63897d21b3697e18987b22f6797175782782e",
-            input={
-                "prompt": prompt if prompt else "face swap"
-            }
+            "lucataco/hotshot-xl:78b3a6257e16e4b241245d65c8b2b81ea2e1ff7ed4c55238b91dc3fa2baaf100",
+            input={"prompt": prompt if prompt else "cinematic video"}
         )
         return {"status": "success", "video_url": output}
     except Exception as e:
