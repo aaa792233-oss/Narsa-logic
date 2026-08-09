@@ -4,7 +4,7 @@ import replicate
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+app = FastAPI
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,20 +15,20 @@ app.add_middleware(
 
 os.environ["REPLICATE_API_TOKEN"] = "तुमची_REPLICATE_API_KEY_येथे_टाका"
 
-class VideoRequest(BaseModel):
-    prompt: str
+class FaceSwapRequest(BaseModel):
+    video_url: str
+    face_image_url: str
 
 @app.post("/api/generate-video")
-async def generate_video(request: VideoRequest):
+async def generate_video(request: FaceSwapRequest):
     try:
-        # ASCII एरर पूर्णपणे रोखण्यासाठी युनिकोड सुरक्षित करणे
-        safe_prompt = request.prompt.encode('ascii', 'ignore').decode('ascii')
-        if not safe_prompt.strip():
-            safe_prompt = "Cinematic video generation"
-
+        # Replicate वरील फेस स्वॅप (Roop / Face Replacement) मॉडेलला कॉल
         output = replicate.run(
-            "lucataco/hotshot-xl:78b3a6257e16e4b241245d65c8b2b81ea2e1ff7ed4c55238b91dc3fa2baaf100",
-            input={"prompt": safe_prompt}
+            "fofr/face-swap:43eaebfaef93e3d36d4d673199d63897d21b3697e18987b22f6797175782782e",
+            input={
+                "target_video": request.video_url,
+                "swap_image": request.face_image_url
+            }
         )
         return {"status": "success", "video_url": output}
     except Exception as e:
